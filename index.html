@@ -3,11 +3,15 @@
 <head>
   <meta charset="UTF-8" />
   <title>P1 Reaction Time Game</title>
+  <!-- Import Montserrat from Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
   <style>
     body {
       background: #000;
       color: #fff;
-      font-family: Arial, sans-serif;
+      /* Use Montserrat with fallbacks */
+      font-family: 'Montserrat', system-ui, -apple-system, BlinkMacSystemFont,
+                   'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -24,6 +28,16 @@
       width: 150px;
       z-index: 15;
     }
+    #tagline {
+      position: absolute;
+      top: calc(15px + 150px + 10px);
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: clamp(18px, 4vw, 28px);
+      color: #fff;
+      text-align: center;
+      z-index: 15;
+    }
     #instr {
       margin-bottom: clamp(12px, 4vw, 30px);
       font-size: clamp(20px, 6vw, 32px);
@@ -34,7 +48,7 @@
       gap: clamp(10px, 3vw, 30px);
     }
     .light {
-      /* Responsive sizing: between 60px and 120px, preferred 15vw */
+      /* Responsive sizing: between 80px and 120px, preferred 15vw */
       width: clamp(80px, 15vw, 120px);
       height: clamp(80px, 15vw, 120px);
       border: 4px solid #ffffff77;
@@ -58,6 +72,7 @@
 </head>
 <body>
   <img id="logo" src="P1dynamicslogo.png" alt="P1 Dynamics Logo">
+  <div id="tagline">P1 Dynamics Racing</div>
   <div id="instr"></div>
   <div id="lights">
     <div class="light"></div>
@@ -78,39 +93,23 @@
     let goTime = null;
     const inputEvents = ['keydown', 'mousedown', 'touchstart'];
 
-    // Utility: add listener once for multiple event types
     function addOnce(elem, handler) {
       inputEvents.forEach(ev => elem.addEventListener(ev, handler, { once: true }));
     }
 
-    // Utility: wait for input event or timeout
     function waitForInput(ms) {
       return new Promise(resolve => {
         let done = false;
         const onInput = e => {
           if (e.type === 'keydown' && e.code !== 'Space') return;
-          if (!done) {
-            done = true;
-            cleanup();
-            resolve(true);
-          }
+          if (!done) { done = true; cleanup(); resolve(true); }
         };
-        const timeout = setTimeout(() => {
-          if (!done) {
-            done = true;
-            cleanup();
-            resolve(false);
-          }
-        }, ms);
+        const timeout = setTimeout(() => { if (!done) { done = true; cleanup(); resolve(false); } }, ms);
         inputEvents.forEach(ev => window.addEventListener(ev, onInput));
-        function cleanup() {
-          clearTimeout(timeout);
-          inputEvents.forEach(ev => window.removeEventListener(ev, onInput));
-        }
+        function cleanup() { clearTimeout(timeout); inputEvents.forEach(ev => window.removeEventListener(ev, onInput)); }
       });
     }
 
-    // Wait specifically for reaction input (Space or tap)
     function waitForReact() {
       return new Promise(resolve => {
         const onInput = e => {
@@ -123,39 +122,27 @@
       });
     }
 
-    // 1. Initial setup: wait for start input
     function init() {
       instr.textContent = 'Tap screen or press space bar to start';
       result.style.visibility = 'hidden';
       retry.style.display = 'none';
       lights.forEach(l => l.style.background = '#444');
-
-      addOnce(window, e => {
-        if (e.type === 'keydown' && e.code !== 'Space') return;
-        startGame();
-      });
+      addOnce(window, e => { if (e.type === 'keydown' && e.code !== 'Space') return; startGame(); });
     }
 
-    // 2. Begin the light sequence after random delay ≤5s
     function startGame() {
       instr.textContent = 'Get Ready… Don’t tap until lights go off';
       lights.forEach(l => l.style.background = '#444');
-
       setTimeout(lightSequence, Math.random() * 5000);
     }
 
-    // 3. Light & reaction logic
     async function lightSequence() {
       instr.textContent = '...';
-      // Lights on one-by-one
       for (let i = 0; i < lights.length; i++) {
         if (await waitForInput(Math.random() * 1500 + 500)) return jump();
         lights[i].style.background = 'red';
       }
-      // Final GO delay
       if (await waitForInput(Math.random() * 2000 + 1000)) return jump();
-
-      // GO state
       lights.forEach(l => l.style.background = '#444');
       instr.textContent = 'GO! Tap or press space bar NOW!';
       goTime = performance.now();
@@ -163,20 +150,14 @@
       showResult(`${reaction} seconds`);
     }
 
-    function jump() {
-      showResult('Jump Start! Wait for lights to go off.');
-    }
+    function jump() { showResult('Jump Start! Wait for lights to go off.'); }
 
     function showResult(text) {
       instr.textContent = '';
       result.textContent = text;
       result.style.visibility = 'visible';
       retry.style.display = 'inline-block';
-      // Restart on input
-      addOnce(window, e => {
-        if (e.type === 'keydown' && e.code !== 'Space') return;
-        init();
-      });
+      addOnce(window, e => { if (e.type === 'keydown' && e.code !== 'Space') return; init(); });
     }
 
     retry.addEventListener('click', init);

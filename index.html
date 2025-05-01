@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>F1 Reaction Time Game</title>
+  <title>P1 Reaction Time Game</title>
   <style>
     body {
       background: #000;
@@ -127,7 +127,7 @@
 
     // 1. Initial setup: wait for start input
     function init() {
-      instr.textContent = 'Tap screen or press Space to start';
+      instr.textContent = 'Tap screen or press space bar to start';
       result.style.visibility = 'hidden';
       retry.style.display = 'none';
       lights.forEach(l => l.style.background = '#444');
@@ -140,7 +140,7 @@
 
     // 2. Begin the light sequence after random delay ≤5s
     function startGame() {
-      instr.textContent = 'Get Ready… Don’t input until lights go off';
+      instr.textContent = 'Get Ready… Don’t tap until lights go off';
       lights.forEach(l => l.style.background = '#444');
 
       setTimeout(lightSequence, Math.random() * 5000);
@@ -159,14 +159,14 @@
 
       // GO state
       lights.forEach(l => l.style.background = '#444');
-      instr.textContent = 'GO! Tap or press Space NOW!';
+      instr.textContent = 'GO! Tap or press space bar NOW!';
       goTime = performance.now();
       const reaction = await waitForReact();
       showResult(`${reaction} seconds`);
     }
 
     function jump() {
-      showResult('Jump Start! Wait for lights to go off');
+      showResult('Jump Start! Wait for lights to go off.');
     }
 
     function showResult(text) {

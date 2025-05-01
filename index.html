@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>P1 Reaction Time Game</title>
+  <title>F1 Reaction Time Game</title>
   <style>
     body {
       background: #000;
@@ -73,62 +73,21 @@
     const retry = document.getElementById('retry');
 
     let goTime = null;
+    const inputEvents = ['keydown', 'mousedown', 'touchstart'];
 
-    // 1. Initial setup: wait for user to press Space to start
-    function init() {
-      instr.textContent = "Press space bar to start";
-      result.style.visibility = 'hidden';
-      retry.style.display = 'none';
-      lights.forEach(l => l.style.background = '#444');
-
-      // Listen once for the Space key to begin
-      window.addEventListener('keydown', handleStart, { once: true });
+    // Utility: add listener once for multiple event types
+    function addOnce(elem, handler) {
+      inputEvents.forEach(ev => elem.addEventListener(ev, handler, { once: true }));
     }
 
-    function handleStart(e) {
-      if (e.code === 'Space') {
-        startGame();
-      }
-    }
-
-    // 2. Begin the light sequence after a random delay ≤ 5s
-    function startGame() {
-      instr.textContent = "Get Ready… Don’t press SPACE BAR until lights go off";
-      result.style.visibility = 'hidden';
-      retry.style.display = 'none';
-      lights.forEach(l => l.style.background = '#444');
-
-      // Random initial delay between 0 and 5000 ms
-      const initialDelay = Math.random() * 5000;
-      setTimeout(lightSequence, initialDelay);
-    }
-
-    // 3. The existing light and reaction logic
-    async function lightSequence() {
-      instr.textContent = '...';
-
-      // Light up one by one (0.5–2s intervals)
-      for (let i = 0; i < lights.length; i++) {
-        const delay = Math.random() * 1500 + 500;
-        if (await waitForSpace(delay)) return jump();
-        lights[i].style.background = 'red';
-      }
-
-      // Final “GO” delay (1–3s)
-      if (await waitForSpace(Math.random() * 2000 + 1000)) return jump();
-
-      // GO: all lights off, record time
-      lights.forEach(l => l.style.background = '#444');
-      instr.textContent = 'GO! Press Space NOW!';
-      goTime = performance.now();
-      await waitForSpaceEvent();
-    }
-
-    function waitForSpace(ms) {
+    // Utility: wait for either barcode event or timeout
+    function waitForInput(ms) {
       return new Promise(resolve => {
         let done = false;
-        const onKey = e => {
-          if (e.code === 'Space' && !done) {
+        const onInput = e => {
+          // If keydown, only accept Space
+          if (e.type === 'keydown' && e.code !== 'Space') return;
+          if (!done) {
             done = true;
             cleanup();
             resolve(true);
@@ -141,27 +100,69 @@
             resolve(false);
           }
         }, ms);
-        window.addEventListener('keydown', onKey);
-
+        inputEvents.forEach(ev => window.addEventListener(ev, onInput));
         function cleanup() {
           clearTimeout(timeout);
-          window.removeEventListener('keydown', onKey);
+          inputEvents.forEach(ev => window.removeEventListener(ev, onInput));
         }
       });
     }
 
-    function waitForSpaceEvent() {
+    // Wait specifically for reaction input (Space or tap)
+    function waitForReact() {
       return new Promise(resolve => {
-        const onKey = e => {
-          if (e.code === 'Space') {
-            window.removeEventListener('keydown', onKey);
-            const rt = ((performance.now() - goTime) / 1000).toFixed(3);
-            showResult(`${rt} seconds`);
-            resolve();
-          }
+        const onInput = e => {
+          if (e.type === 'keydown' && e.code !== 'Space') return;
+          window.removeEventListener('keydown', onInput);
+          window.removeEventListener('mousedown', onInput);
+          window.removeEventListener('touchstart', onInput);
+          const rt = ((performance.now() - goTime) / 1000).toFixed(3);
+          resolve(rt);
         };
-        window.addEventListener('keydown', onKey);
+        window.addEventListener('keydown', onInput);
+        window.addEventListener('mousedown', onInput);
+        window.addEventListener('touchstart', onInput);
       });
+    }
+
+    // 1. Initial setup: wait for start input
+    function init() {
+      instr.textContent = 'Tap screen or press Space to start';
+      result.style.visibility = 'hidden';
+      retry.style.display = 'none';
+      lights.forEach(l => l.style.background = '#444');
+
+      addOnce(window, e => {
+        if (e.type === 'keydown' && e.code !== 'Space') return;
+        startGame();
+      });
+    }
+
+    // 2. Begin the light sequence after random delay ≤5s
+    function startGame() {
+      instr.textContent = 'Get Ready… Don’t input until lights go off';
+      lights.forEach(l => l.style.background = '#444');
+
+      setTimeout(lightSequence, Math.random() * 5000);
+    }
+
+    // 3. Light & reaction logic
+    async function lightSequence() {
+      instr.textContent = '...';
+      // Lights on one-by-one
+      for (let i = 0; i < lights.length; i++) {
+        if (await waitForInput(Math.random() * 1500 + 500)) return jump();
+        lights[i].style.background = 'red';
+      }
+      // Final GO delay
+      if (await waitForInput(Math.random() * 2000 + 1000)) return jump();
+
+      // GO state
+      lights.forEach(l => l.style.background = '#444');
+      instr.textContent = 'GO! Tap or press Space NOW!';
+      goTime = performance.now();
+      const reaction = await waitForReact();
+      showResult(`${reaction} seconds`);
     }
 
     function jump() {
@@ -173,18 +174,14 @@
       result.textContent = text;
       result.style.visibility = 'visible';
       retry.style.display = 'inline-block';
-      // 5. Allow space bar to restart game
-      window.addEventListener('keydown', e => {
-        if (e.code === 'Space') {
-          init();
-        }
-      }, { once: true });
+      // Restart on input
+      addOnce(window, e => {
+        if (e.type === 'keydown' && e.code !== 'Space') return;
+        init();
+      });
     }
 
-    // 4. Retry brings you back to the "press Space to start" state
     retry.addEventListener('click', init);
-
-    // Kick everything off
     window.addEventListener('load', init);
   </script>
 </body>

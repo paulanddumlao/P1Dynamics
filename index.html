@@ -30,11 +30,12 @@
     }
     #lights {
       display: flex;
-      gap: 20px;
+      gap: clamp(10px, 3vw, 30px);
     }
     .light {
-      width: 60px;
-      height: 60px;
+      /* Responsive sizing: between 60px and 100px, preferred 12vw */
+      width: clamp(60px, 12vw, 100px);
+      height: clamp(60px, 12vw, 100px);
       border: 3px solid #ffffff77;
       background: #444;
       border-radius: 50%;
@@ -80,12 +81,11 @@
       inputEvents.forEach(ev => elem.addEventListener(ev, handler, { once: true }));
     }
 
-    // Utility: wait for either barcode event or timeout
+    // Utility: wait for either input event or timeout
     function waitForInput(ms) {
       return new Promise(resolve => {
         let done = false;
         const onInput = e => {
-          // If keydown, only accept Space
           if (e.type === 'keydown' && e.code !== 'Space') return;
           if (!done) {
             done = true;
@@ -113,15 +113,11 @@
       return new Promise(resolve => {
         const onInput = e => {
           if (e.type === 'keydown' && e.code !== 'Space') return;
-          window.removeEventListener('keydown', onInput);
-          window.removeEventListener('mousedown', onInput);
-          window.removeEventListener('touchstart', onInput);
+          inputEvents.forEach(ev => window.removeEventListener(ev, onInput));
           const rt = ((performance.now() - goTime) / 1000).toFixed(3);
           resolve(rt);
         };
-        window.addEventListener('keydown', onInput);
-        window.addEventListener('mousedown', onInput);
-        window.addEventListener('touchstart', onInput);
+        inputEvents.forEach(ev => window.addEventListener(ev, onInput));
       });
     }
 

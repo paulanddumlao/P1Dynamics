@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>P1 Reaction Time Game</title>
+  <style>
+    body {
+      background: #000;
+      color: #fff;
+      font-family: Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+      position: relative;
+    }
+    #logo {
+      position: absolute;
+      top: 15px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 150px;
+      z-index: 15;
+    }
+    #instr {
+      margin-bottom: 20px;
+      font-size: 1.2em;
+    }
+    #lights {
+      display: flex;
+      gap: 20px;
+    }
+    .light {
+      width: 60px;
+      height: 60px;
+      border: 3px solid #ffffff77;
+      background: #444;
+      border-radius: 50%;
+    }
+    #result {
+      margin-top: 30px;
+      font-size: 1.4em;
+      visibility: hidden;
+    }
+    #retry {
+      margin-top: 15px;
+      padding: 8px 16px;
+      font-size: 1em;
+      cursor: pointer;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <img id="logo" src="P1dynamicslogo.png" alt="P1 Dynamics Logo">
+  <div id="instr"></div>
+  <div id="lights">
+    <div class="light"></div>
+    <div class="light"></div>
+    <div class="light"></div>
+    <div class="light"></div>
+    <div class="light"></div>
+  </div>
+  <div id="result"></div>
+  <button id="retry">Try Again</button>
+
+  <script>
+    const instr = document.getElementById('instr');
+    const lights = Array.from(document.querySelectorAll('.light'));
+    const result = document.getElementById('result');
+    const retry = document.getElementById('retry');
+
+    let goTime = null;
+
+    // 1. Initial setup: wait for user to press Space to start
+    function init() {
+      instr.textContent = "Press space bar to start";
+      result.style.visibility = 'hidden';
+      retry.style.display = 'none';
+      lights.forEach(l => l.style.background = '#444');
+
+      // Listen once for the Space key to begin
+      window.addEventListener('keydown', handleStart, { once: true });
+    }
+
+    function handleStart(e) {
+      if (e.code === 'Space') {
+        startGame();
+      }
+    }
+
+    // 2. Begin the light sequence after a random delay ≤ 5s
+    function startGame() {
+      instr.textContent = "Get Ready… Don’t press SPACE BAR until lights go off";
+      result.style.visibility = 'hidden';
+      retry.style.display = 'none';
+      lights.forEach(l => l.style.background = '#444');
+
+      // Random initial delay between 0 and 5000 ms
+      const initialDelay = Math.random() * 5000;
+      setTimeout(lightSequence, initialDelay);
+    }
+
+    // 3. The existing light and reaction logic
+    async function lightSequence() {
+      instr.textContent = '...';
+
+      // Light up one by one (0.5–2s intervals)
+      for (let i = 0; i < lights.length; i++) {
+        const delay = Math.random() * 1500 + 500;
+        if (await waitForSpace(delay)) return jump();
+        lights[i].style.background = 'red';
+      }
+
+      // Final “GO” delay (1–3s)
+      if (await waitForSpace(Math.random() * 2000 + 1000)) return jump();
+
+      // GO: all lights off, record time
+      lights.forEach(l => l.style.background = '#444');
+      instr.textContent = 'GO! Press Space NOW!';
+      goTime = performance.now();
+      await waitForSpaceEvent();
+    }
+
+    function waitForSpace(ms) {
+      return new Promise(resolve => {
+        let done = false;
+        const onKey = e => {
+          if (e.code === 'Space' && !done) {
+            done = true;
+            cleanup();
+            resolve(true);
+          }
+        };
+        const timeout = setTimeout(() => {
+          if (!done) {
+            done = true;
+            cleanup();
+            resolve(false);
+          }
+        }, ms);
+        window.addEventListener('keydown', onKey);
+
+        function cleanup() {
+          clearTimeout(timeout);
+          window.removeEventListener('keydown', onKey);
+        }
+      });
+    }
+
+    function waitForSpaceEvent() {
+      return new Promise(resolve => {
+        const onKey = e => {
+          if (e.code === 'Space') {
+            window.removeEventListener('keydown', onKey);
+            const rt = ((performance.now() - goTime) / 1000).toFixed(3);
+            showResult(`${rt} seconds`);
+            resolve();
+          }
+        };
+        window.addEventListener('keydown', onKey);
+      });
+    }
+
+    function jump() {
+      showResult('Jump Start! Wait for lights to go off');
+    }
+
+    function showResult(text) {
+      instr.textContent = '';
+      result.textContent = text;
+      result.style.visibility = 'visible';
+      retry.style.display = 'inline-block';
+      // 5. Allow space bar to restart game
+      window.addEventListener('keydown', e => {
+        if (e.code === 'Space') {
+          init();
+        }
+      }, { once: true });
+    }
+
+    // 4. Retry brings you back to the "press Space to start" state
+    retry.addEventListener('click', init);
+
+    // Kick everything off
+    window.addEventListener('load', init);
+  </script>
+</body>
+</html>

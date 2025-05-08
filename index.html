@@ -9,7 +9,6 @@
     body {
       background: #000;
       color: #fff;
-      /* Use Montserrat with fallbacks */
       font-family: 'Montserrat', system-ui, -apple-system, BlinkMacSystemFont,
                    'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
       display: flex;
@@ -48,7 +47,6 @@
       gap: clamp(10px, 3vw, 30px);
     }
     .light {
-      /* Responsive sizing: between 80px and 120px, preferred 15vw */
       width: clamp(80px, 15vw, 120px);
       height: clamp(80px, 15vw, 120px);
       border: 4px solid #ffffff77;
@@ -91,29 +89,32 @@
     const retry = document.getElementById('retry');
 
     let goTime = null;
+    let waitingForStart = false;
     const inputEvents = ['keydown', 'mousedown', 'touchstart'];
 
-    function addOnce(elem, handler) {
-      inputEvents.forEach(ev => elem.addEventListener(ev, handler, { once: true }));
+    // Listen for next start trigger if waitingForStart
+    function addOnce(handler) {
+      inputEvents.forEach(ev => window.addEventListener(ev, function fn(e) {
+        window.removeEventListener(ev, fn);
+        if (waitingForStart) handler();
+      }));
     }
 
+    // Wait for any input or timeout
     function waitForInput(ms) {
       return new Promise(resolve => {
         let done = false;
-        const onInput = e => {
-          if (e.type === 'keydown' && e.code !== 'Space') return;
-          if (!done) { done = true; cleanup(); resolve(true); }
-        };
+        const onInput = () => { if (!done) { done = true; cleanup(); resolve(true); } };
         const timeout = setTimeout(() => { if (!done) { done = true; cleanup(); resolve(false); } }, ms);
         inputEvents.forEach(ev => window.addEventListener(ev, onInput));
         function cleanup() { clearTimeout(timeout); inputEvents.forEach(ev => window.removeEventListener(ev, onInput)); }
       });
     }
 
+    // Wait for reaction input
     function waitForReact() {
       return new Promise(resolve => {
-        const onInput = e => {
-          if (e.type === 'keydown' && e.code !== 'Space') return;
+        const onInput = () => {
           inputEvents.forEach(ev => window.removeEventListener(ev, onInput));
           const rt = ((performance.now() - goTime) / 1000).toFixed(3);
           resolve(rt);
@@ -122,20 +123,25 @@
       });
     }
 
+    // Initialize game: show start text
     function init() {
-      instr.textContent = 'Tap screen or press space bar to start';
+      waitingForStart = true;
+      instr.textContent = 'Tap screen or press any key to start';
       result.style.visibility = 'hidden';
       retry.style.display = 'none';
       lights.forEach(l => l.style.background = '#444');
-      addOnce(window, e => { if (e.type === 'keydown' && e.code !== 'Space') return; startGame(); });
+      addOnce(startGame);
     }
 
+    // Start sequence with random 0–5s delay
     function startGame() {
-      instr.textContent = 'Get Ready… Don’t tap until lights go off';
+      waitingForStart = false;
+      instr.textContent = 'Get Ready… Don’t tap or press until lights go off';
       lights.forEach(l => l.style.background = '#444');
       setTimeout(lightSequence, Math.random() * 5000);
     }
 
+    // Light and reaction logic
     async function lightSequence() {
       instr.textContent = '...';
       for (let i = 0; i < lights.length; i++) {
@@ -144,20 +150,22 @@
       }
       if (await waitForInput(Math.random() * 2000 + 1000)) return jump();
       lights.forEach(l => l.style.background = '#444');
-      instr.textContent = 'GO! Tap or press space bar NOW!';
+      instr.textContent = 'GO! Tap or press any key NOW!';
       goTime = performance.now();
       const reaction = await waitForReact();
       showResult(`${reaction} seconds`);
     }
 
-    function jump() { showResult('Jump Start! Wait for lights to go off.'); }
+    function jump() {
+      showResult('Jump Start! Wait for lights to go off.');
+    }
 
+    // Show result and wait for button click to restart
     function showResult(text) {
       instr.textContent = '';
       result.textContent = text;
       result.style.visibility = 'visible';
       retry.style.display = 'inline-block';
-      addOnce(window, e => { if (e.type === 'keydown' && e.code !== 'Space') return; init(); });
     }
 
     retry.addEventListener('click', init);
